@@ -4,6 +4,7 @@ local http = require 'socket.http'
 local RESPONSE_911 = "911"
 local RETRY_SECONDS_911 = 30 * 60 -- wait at least 30 mins before retrying after receiving 911 from noip.com
 local LAST_UPDATE_FILE_PATH = "last-update"
+local EXTERNAL_IP_SERVER = "http://icanhazip.com/s"
 
 http.USERAGENT="ddns-updater/0.1 okash.khawaja@gmail.com"
 
@@ -17,6 +18,14 @@ local function read_whole_file(path)
         f:close()
 
         return contents
+end
+
+local function write_last_update(last_update)
+        local str = last_update.time .. " " .. " " .. last_update.ip ..
+                " " .. " " .. last_update.response
+        local f = io.open(LAST_UPDATE_FILE_PATH, "w")
+        f:write(str)
+        f:close()
 end
 
 local function read_last_update()
@@ -47,13 +56,18 @@ local function read_last_update()
         return last_update
 end
 
-local function write_last_update(last_update)
-        local str = last_update.time .. " " .. " " .. last_update.ip ..
-                " " .. " " .. last_update.response
-        local f = io.open(LAST_UPDATE_FILE_PATH, "w")
-        f:write(str)
-        f:close()
+local function get_ip()
+        local response, code = http.request(EXTERNAL_IP_SERVER)
+
+        if tonumber(code) ~= 200 then
+                return nil
+        end
+
+        return response:gsub("\r", ""):gsub("\n", "")
 end
+
+
+---- main ----
 
 -- values plugged in the URL below must be URL-encoded
 local response, code, headers, status = https.request(
