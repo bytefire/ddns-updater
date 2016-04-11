@@ -1,6 +1,11 @@
 local https = require 'ssl.https'
 local http = require 'socket.http'
 
+-- config. following must be URL-encoded
+local USERNAME = "username"
+local PASSWORD = "password"
+local HOSTNAME = "dnsname.net"
+
 local RESPONSE_911 = "911"
 local RETRY_SECONDS_911 = 30 * 60 -- wait at least 30 mins before retrying after receiving 911 from noip.com
 local LAST_UPDATE_FILE_PATH = "last-update"
@@ -69,9 +74,42 @@ end
 
 ---- main ----
 
+-- read last_update table (time, ip, response)
+local last_update = read_last_update()
+local current_ip = get_ip()
+
+if last_update.ip == current_ip then
+        return
+end
+
+local current_time = os.time()
+
+if last_update.response == RESPONSE_911 and
+        (current_time - last_update.time < RETRY_SECONDS_911) then
+        return
+end
+
+-- if here then either we've waited long enough after receiving a 911
+-- or we didn't need to wait. update ip in both cases
+
 -- values plugged in the URL below must be URL-encoded
 local response, code, headers, status = https.request(
-	"https://username:password@dynupdate.no-ip.com/nic/update?
-				hostname=dnsname.net&myip=127.0.0.1")
-print(response, status)
+	"https://" .. USERNAME .. ":" .. PASSWORD .. "@dynupdate.no-ip.com/
+		nic/update?hostname=" .. HOSTNAME .. "&myip=" .. current_ip)
 
+if tonumber(code) ~= 200 then
+        return
+end
+
+local current_update = {}
+if response == RESPONSE_911 then
+        current_update.time = current_time
+        current_update.ip = last_update.ip
+        current_update.reponse = response
+else
+        current_update.time = current_time
+        current_update.ip = current_ip
+        current_update.response = response
+end
+
+write_last_update(current_update)
