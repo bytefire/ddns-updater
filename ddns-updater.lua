@@ -97,10 +97,10 @@ end
 -- or we didn't need to wait. update ip in both cases
 
 -- values plugged in the URL below must be URL-encoded
-local response, code, headers, status = https.request(
-	"https://" .. USERNAME .. ":" .. PASSWORD ..
-	"@dynupdate.no-ip.com/nic/update?hostname=" .. HOSTNAME .. "&myip=" ..
-	current_ip)
+local update_url = "https://" .. USERNAME .. ":" .. PASSWORD ..
+        "@dynupdate.no-ip.com/nic/update?hostname=" .. HOSTNAME .. "&myip=" ..
+        current_ip
+local response, code, headers, status = https.request(update_url)
 
 if tonumber(code) ~= 200 then
 	return
